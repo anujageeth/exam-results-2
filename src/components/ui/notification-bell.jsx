@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Info, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { getNotifications, getStudentNotifications } from '../../../services/notificationService';
+import { getNotifications, getStudentNotifications } from '../../services/notificationService';
 
 export const NotificationBell = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
