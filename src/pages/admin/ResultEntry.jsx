@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../components/ui/button';
 import { Select } from '../../components/ui/select';
 import { Input } from '../../components/ui/input';
-import { getStudents, uploadResults, getSagaStatus } from '../../services/adminService';
+import { getStudents, getExams, uploadResults, getSagaStatus } from '../../services/adminService';
 import {
   Upload, CheckCircle2, Loader2, AlertCircle,
   RefreshCw, Plus, Trash2,
@@ -17,13 +17,6 @@ const sagaStatusConfig = {
   COMPENSATING: { color: 'text-amber-600', bg: 'bg-amber-50', label: 'Compensating' },
   COMPENSATED:  { color: 'text-red-600', bg: 'bg-red-50', label: 'Compensated (Rolled Back)' },
 };
-
-const HARD_CODED_EXAMS = [
-  { id: 7208, name: 'EC7208 Cloud Computing' },
-  { id: 5382, name: 'Machine Learning' },
-  { id: 6205, name: 'Distributed Systems' },
-  { id: 5110, name: 'Advanced Database Systems' },
-];
 
 function calculateGrade(rawScore) {
   const score = Number(rawScore);
@@ -47,6 +40,9 @@ function createEmptyEntry() {
 }
 
 const ResultEntry = () => {
+  const [exams, setExams] = useState([]);
+  const [examsLoading, setExamsLoading] = useState(true);
+  const [examsError, setExamsError] = useState(null);
   const [students, setStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(true);
   const [studentsError, setStudentsError] = useState(null);
@@ -60,24 +56,34 @@ const ResultEntry = () => {
   const [sagaState, setSagaState] = useState(null);
   const [formError, setFormError] = useState(null);
 
-  // Fetch students from DB on mount
+  // Fetch students and exams from DB on mount
   useEffect(() => {
-    async function fetchStudents() {
+    async function fetchLookupData() {
       try {
         setStudentsLoading(true);
+        setExamsLoading(true);
         setStudentsError(null);
-        const data = await getStudents();
-        setStudents(data.students || []);
+        setExamsError(null);
+
+        const [studentsData, examsData] = await Promise.all([
+          getStudents(),
+          getExams(),
+        ]);
+
+        setStudents(studentsData.students || []);
+        setExams(examsData.exams || []);
       } catch (err) {
         setStudentsError(err.message);
+        setExamsError(err.message);
       } finally {
         setStudentsLoading(false);
+        setExamsLoading(false);
       }
     }
-    fetchStudents();
+    fetchLookupData();
   }, []);
 
-  const examOptions = HARD_CODED_EXAMS.map(e => ({ value: String(e.id), label: `${e.name} (ID: ${e.id})` }));
+  const examOptions = exams.map(e => ({ value: String(e.id), label: `${e.name} (ID: ${e.id})` }));
   const studentOptions = useMemo(
     () => students.map(s => ({ value: String(s.id), label: `${s.name || 'Unnamed'} (${s.email})` })),
     [students]
@@ -135,7 +141,7 @@ const ResultEntry = () => {
   };
 
   const buildCsvFile = () => {
-    const exam = HARD_CODED_EXAMS.find(e => String(e.id) === selectedExam);
+    const exam = exams.find(e => String(e.id) === selectedExam);
     const lines = [
       'student_id,exam_id,score,grade,exam_name,exam_date',
       ...entries.map(row => [
@@ -225,7 +231,8 @@ const ResultEntry = () => {
               options={examOptions}
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
-              placeholder="Select exam..."
+              placeholder={examsLoading ? 'Loading exams...' : 'Select exam...'}
+              disabled={examsLoading || !!examsError}
             />
             <Input
               type="date"
@@ -301,7 +308,7 @@ const ResultEntry = () => {
             <Button type="button" variant="outline" onClick={addEntryRow} className="gap-1.5">
               <Plus className="h-4 w-4" /> Add Row
             </Button>
-            <Button type="button" onClick={handleUpload} disabled={uploading || studentsLoading} className="gap-1.5">
+            <Button type="button" onClick={handleUpload} disabled={uploading || studentsLoading || examsLoading} className="gap-1.5">
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
@@ -318,6 +325,12 @@ const ResultEntry = () => {
           {studentsError && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-sm text-red-600">
               Failed to load students: {studentsError}
+            </div>
+          )}
+
+          {examsError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4 text-sm text-red-600">
+              Failed to load exams: {examsError}
             </div>
           )}
 

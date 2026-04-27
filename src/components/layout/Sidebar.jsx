@@ -3,11 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import {
   LayoutDashboard,
-  Users,
-  BookOpen,
-  CalendarCheck,
   FileUp,
-  CheckCircle2,
+  Eye,
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -15,11 +12,8 @@ import {
 
 const sidebarLinks = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Students', path: '/admin/students', icon: Users },
-  { label: 'Modules', path: '/admin/modules', icon: BookOpen },
-  { label: 'Exam Sessions', path: '/admin/exam-sessions', icon: CalendarCheck },
   { label: 'Result Entry', path: '/admin/result-entry', icon: FileUp },
-  { label: 'Result Publishing', path: '/admin/result-publishing', icon: CheckCircle2 },
+  { label: 'All Results', path: '/admin/all-results', icon: Eye },
   { label: 'Notification Log', path: '/admin/notifications', icon: Bell },
 ];
 
