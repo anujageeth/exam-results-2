@@ -9,6 +9,7 @@
  *   GET  /admin/results           — list all results
  *   GET  /admin/saga/:sagaId      — poll a specific SAGA run
  *   GET  /admin/sagas             — list 20 most recent SAGA runs
+ *   GET  /auth/students           — list all students (via auth-service, admin only)
  */
 
 import api from './api';
@@ -86,4 +87,19 @@ export async function getSagaStatus(sagaId) {
  */
 export async function getRecentSagas() {
   return api.get('admin', '/admin/sagas');
+}
+
+/**
+ * Fetch students from auth-service for result entry.
+ *
+ * Backend response:
+ * {
+ *   students: [{ id, name, email, role }],
+ *   count: number
+ * }
+ *
+ * @returns {Promise<{students: Array, count: number}>}
+ */
+export async function getStudents() {
+  return api.get('auth', '/auth/students');
 }
