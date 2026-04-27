@@ -8,6 +8,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '.
 import { getStoredUser } from '../../services/authService';
 import { getStudentResults } from '../../services/resultService';
 import { Download, Search, Printer, Filter, Loader2, AlertCircle } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const Transcript = () => {
   const [results, setResults] = useState([]);
@@ -62,23 +64,43 @@ const Transcript = () => {
     });
   }, [results, examFilter, gradeFilter, searchTerm]);
 
-  // Group results by exam_name
-  const groupedByExam = useMemo(() => {
-    const groups = {};
-    filteredResults.forEach(r => {
-      const key = r.exam_name || 'Unknown Exam';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-    });
-    return groups;
-  }, [filteredResults]);
+  const formatDate = (dateValue) => {
+    if (!dateValue) return 'N/A';
+    const parsedDate = new Date(dateValue);
+    return Number.isNaN(parsedDate.getTime()) ? 'N/A' : parsedDate.toLocaleDateString();
+  };
 
-  // Compute stats
-  const totalResults = filteredResults.length;
-  const avgScore = totalResults > 0
-    ? (filteredResults.reduce((sum, r) => sum + (r.score || 0), 0) / totalResults).toFixed(1)
-    : '0.0';
-  const passCount = filteredResults.filter(r => r.grade && r.grade !== 'F').length;
+  const handleDownloadPdf = () => {
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const generatedOn = new Date().toLocaleString();
+
+    doc.setFontSize(16);
+    doc.text('Academic Transcript', 40, 46);
+
+    doc.setFontSize(10);
+    doc.text(`Student: ${user?.email || 'N/A'}`, 40, 64);
+    doc.text(`Student ID: ${user?.user_id || 'N/A'}`, 40, 78);
+    doc.text(`Generated: ${generatedOn}`, 40, 92);
+
+    autoTable(doc, {
+      startY: 110,
+      head: [['Exam Name', 'Exam Date', 'Score', 'Grade', 'Published Date']],
+      body: filteredResults.map((result) => [
+        result.exam_name || 'Unknown Exam',
+        formatDate(result.exam_date),
+        result.score ?? 'N/A',
+        result.grade || 'N/A',
+        formatDate(result.published_at),
+      ]),
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [95, 10, 12] },
+      margin: { left: 40, right: 40 },
+    });
+
+    const safeStudentId = String(user?.user_id || 'student');
+    const safeDate = new Date().toISOString().slice(0, 10);
+    doc.save(`transcript-${safeStudentId}-${safeDate}.pdf`);
+  };
 
   const getGradeColor = (grade) => {
     if (!grade || grade === '-') return 'text-gray-400';
@@ -122,10 +144,16 @@ const Transcript = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5">
+          {/* <Button variant="outline" size="sm" className="gap-1.5">
             <Printer className="h-4 w-4" /> Print
-          </Button>
-          <Button variant="default" size="sm" className="gap-1.5">
+          </Button> */}
+          <Button
+            variant="default"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleDownloadPdf}
+            disabled={filteredResults.length === 0}
+          >
             <Download className="h-4 w-4" /> Download PDF
           </Button>
         </div>
@@ -175,55 +203,48 @@ const Transcript = () => {
         </CardContent>
       </Card>
 
-      {/* Results grouped by exam */}
-      {Object.entries(groupedByExam).length > 0 ? (
-        Object.entries(groupedByExam).map(([examName, examResults]) => (
-          <Card key={examName} className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-base">{examName}</CardTitle>
-              <CardDescription>
-                {examResults.length} result{examResults.length !== 1 ? 's' : ''} •
-                Exam Date: {examResults[0]?.exam_date ? new Date(examResults[0].exam_date).toLocaleDateString() : 'N/A'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Result ID</TableHead>
-                    <TableHead className="text-center">Score</TableHead>
-                    <TableHead className="text-center">Grade</TableHead>
-                    <TableHead className="text-center">Published</TableHead>
-                    <TableHead className="text-center">Source</TableHead>
+      {/* Results Table */}
+      {filteredResults.length > 0 ? (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">All Results</CardTitle>
+            <CardDescription>
+              {filteredResults.length} result{filteredResults.length !== 1 ? 's' : ''}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Exam Name</TableHead>
+                  <TableHead className="text-center">Exam Date</TableHead>
+                  <TableHead className="text-center">Score</TableHead>
+                  <TableHead className="text-center">Grade</TableHead>
+                  <TableHead className="text-center">Published Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredResults.map((result) => (
+                  <TableRow key={result.id}>
+                    <TableCell className="font-medium text-gray-900">{result.exam_name || 'Unknown Exam'}</TableCell>
+                    <TableCell className="text-center text-sm text-gray-600">
+                      {formatDate(result.exam_date)}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold">{result.score}</TableCell>
+                    <TableCell className="text-center">
+                      <span className={`font-bold text-base ${getGradeColor(result.grade)}`}>
+                        {result.grade}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center text-sm text-gray-600">
+                      {formatDate(result.published_at)}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {examResults.map((result) => (
-                    <TableRow key={result.id}>
-                      <TableCell className="font-medium text-gray-900">#{result.id}</TableCell>
-                      <TableCell className="text-center font-semibold">{result.score}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={`font-bold text-base ${getGradeColor(result.grade)}`}>
-                          {result.grade}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="published">
-                          {result.published_at
-                            ? new Date(result.published_at).toLocaleDateString()
-                            : 'N/A'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="text-xs text-gray-400">Published</span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="py-16 text-center">
           <p className="text-gray-400">No results found for the selected filters.</p>
@@ -231,7 +252,7 @@ const Transcript = () => {
       )}
 
       {/* Summary */}
-      <Card>
+      {/* <Card>
         <CardContent className="p-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
             <div className="text-center">
@@ -252,7 +273,7 @@ const Transcript = () => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };
