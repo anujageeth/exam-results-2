@@ -86,14 +86,11 @@ const NotificationLog = () => {
           title="Sent Successfully"
           value={stats.sent}
           icon={CheckCircle2}
-          trend="up"
-          trendValue={stats.total > 0 ? `${((stats.sent / stats.total) * 100).toFixed(0)}%` : '0%'}
         />
         <StatCard
           title="Failed"
           value={stats.failed}
           icon={XCircle}
-          subtitle={stats.total > 0 ? `${((stats.failed / stats.total) * 100).toFixed(1)}% failure rate` : ''}
         />
       </div>
 
