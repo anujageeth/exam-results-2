@@ -20,6 +20,7 @@ import ExamSessionManagement from './pages/admin/ExamSessionManagement';
 import ResultEntry from './pages/admin/ResultEntry';
 import ResultPublishing from './pages/admin/ResultPublishing';
 import AllResults from './pages/admin/AllResults';
+import AllUsers from './pages/admin/AllUsers';
 import NotificationLog from './pages/admin/NotificationLog';
 
 // Auth helpers
@@ -115,6 +116,7 @@ function App() {
           <Route path="/admin/modules" element={<ModuleManagement />} />
           <Route path="/admin/exam-sessions" element={<ExamSessionManagement />} />
           <Route path="/admin/result-entry" element={<ResultEntry />} />
+          <Route path="/admin/users" element={<AllUsers />} />
           <Route path="/admin/all-results" element={<AllResults />} />
           <Route path="/admin/result-publishing" element={<ResultPublishing />} />
           <Route path="/admin/notifications" element={<NotificationLog />} />

@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils';
 import {
   LayoutDashboard,
   FileUp,
+  Users,
   Eye,
   Bell,
   ChevronLeft,
@@ -13,6 +14,7 @@ import {
 const sidebarLinks = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Result Entry', path: '/admin/result-entry', icon: FileUp },
+  { label: 'All Users', path: '/admin/users', icon: Users },
   { label: 'All Results', path: '/admin/all-results', icon: Eye },
   { label: 'Notification Log', path: '/admin/notifications', icon: Bell },
 ];

@@ -103,3 +103,18 @@ export async function getRecentSagas() {
 export async function getStudents() {
   return api.get('auth', '/auth/students');
 }
+
+/**
+ * Fetch all users from auth-service (admin only).
+ *
+ * Backend response:
+ * {
+ *   users: [{ id, google_id, email, name, role, created_at }],
+ *   count: number
+ * }
+ *
+ * @returns {Promise<{users: Array, count: number}>}
+ */
+export async function getAllUsers() {
+  return api.get('auth', '/auth/users');
+}
