@@ -178,8 +178,8 @@ const StudentDashboard = () => {
             <p className="text-ceylon-gold/80 text-sm font-medium mb-1">Welcome back,</p>
             <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">{user?.email || 'Student'}</h1>
             <div className="flex flex-wrap items-center gap-3 mt-2">
-              <span className="text-sm text-white/60">ID: {user?.user_id}</span>
-              <span className="text-white/30">•</span>
+              {/* <span className="text-sm text-white/60">ID: {user?.user_id}</span>
+              <span className="text-white/30">•</span> */}
               <span className="text-sm text-white/60 capitalize">{user?.role}</span>
             </div>
           </div>

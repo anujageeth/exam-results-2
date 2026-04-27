@@ -148,8 +148,6 @@ const AdminDashboard = () => {
           title="Published Results"
           value={publishedResults}
           icon={CheckCircle2}
-          trend="up"
-          trendValue={`${publishedResults}`}
         />
         <StatCard
           title="Notifications"

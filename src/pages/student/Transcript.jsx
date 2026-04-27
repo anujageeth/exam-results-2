@@ -140,7 +140,7 @@ const Transcript = () => {
         <div>
           <h1 className="section-title">Academic Transcript</h1>
           <p className="section-subtitle mb-0">
-            {user?.email} — ID: {user?.user_id}
+            {user?.email}
           </p>
         </div>
         <div className="flex gap-2">
