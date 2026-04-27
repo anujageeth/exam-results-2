@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Info, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
-import { cn } from '../../lib/utils';
 import { getNotifications, getStudentNotifications } from '../../services/notificationService';
 
 export const NotificationBell = ({ user }) => {
@@ -8,6 +7,23 @@ export const NotificationBell = ({ user }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+
+  const normalizeNotification = (notification) => {
+    const status = notification.status || 'pending';
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+    const subject = notification.subject
+      || `Result ${statusLabel}: Exam ${notification.exam_id ?? '-'}`;
+    const message = notification.message
+      || `Student ${notification.student_id} • Score ${notification.score ?? '-'} • Grade ${notification.grade ?? '-'}`;
+
+    return {
+      ...notification,
+      type: notification.type || status,
+      subject,
+      message,
+      createdAt: notification.createdAt || notification.sent_at || notification.updatedAt,
+    };
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -27,7 +43,7 @@ export const NotificationBell = ({ user }) => {
       if (user.role === 'admin') {
         res = await getNotifications();
       } else {
-        const userId = user.id || user.userId || user.studentId || user._id;
+        const userId = user.id || user.userId || user.user_id || user.studentId || user._id;
         if (!userId) {
           console.warn("User ID not found for notifications");
           return;
@@ -37,9 +53,9 @@ export const NotificationBell = ({ user }) => {
       
       // Handle the API response structure safely
       if (res && res.notifications) {
-        setNotifications(res.notifications.slice(0, 5));
+        setNotifications(res.notifications.slice(0, 5).map(normalizeNotification));
       } else if (Array.isArray(res)) {
-        setNotifications(res.slice(0, 5));
+        setNotifications(res.slice(0, 5).map(normalizeNotification));
       } else {
         setNotifications([]);
       }
@@ -64,6 +80,9 @@ export const NotificationBell = ({ user }) => {
       case 'warning': return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'error': return <XCircle className="h-4 w-4 text-red-500" />;
       case 'success': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'sent': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'failed': return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'pending': return <Info className="h-4 w-4 text-amber-500" />;
       default: return <Bell className="h-4 w-4 text-ceylon-gold" />;
     }
   };
