@@ -92,14 +92,14 @@ const AdminDashboard = () => {
     return Object.entries(counts)
       .map(([grade, count]) => ({ grade, count, color: gradeColors[grade] || '#6B7280' }))
       .sort((a, b) => {
-        const order = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F'];
+        const order = ['A+','A','A-','B+','B','B-','C+','C','C-','E'];
         return order.indexOf(a.grade) - order.indexOf(b.grade);
       });
   }, [results]);
 
   // Pass/Fail ratio
-  const passCount = results.filter(r => r.grade && r.grade !== 'F').length;
-  const failCount = results.filter(r => r.grade === 'F').length;
+  const passCount = results.filter(r => r.grade && r.grade !== 'E').length;
+  const failCount = results.filter(r => r.grade === 'E').length;
   const passRate = totalResults > 0 ? ((passCount / totalResults) * 100).toFixed(1) : 0;
   const failRate = totalResults > 0 ? ((failCount / totalResults) * 100).toFixed(1) : 0;
 

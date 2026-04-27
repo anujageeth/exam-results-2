@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { StatCard } from '../../components/ui/stat-card';
 import { Avatar } from '../../components/ui/avatar';
@@ -16,12 +15,33 @@ import {
   TrendingUp,
   FileText,
   ArrowRight,
-  Calendar,
   Download,
   Bell,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
+
+const DONUT_RADIUS = 50;
+const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
+
+const gradeBandConfig = [
+  { key: 'A', label: 'A range', color: '#059669' },
+  { key: 'B', label: 'B range', color: '#D97706' },
+  { key: 'C', label: 'C range', color: '#EA580C' },
+  { key: 'D', label: 'D range', color: '#0284C7' },
+  { key: 'E', label: 'E / Fail', color: '#DC2626' },
+  { key: 'OTHER', label: 'Other', color: '#6B7280' },
+];
+
+const normalizeGrade = (grade) => (typeof grade === 'string' ? grade.trim().toUpperCase() : '');
+
+const getGradeBand = (grade) => {
+  const normalizedGrade = normalizeGrade(grade);
+  if (!normalizedGrade) return 'OTHER';
+  const leadingChar = normalizedGrade.charAt(0);
+  if (['A', 'B', 'C', 'D', 'E'].includes(leadingChar)) return leadingChar;
+  return 'OTHER';
+};
 
 const StudentDashboard = () => {
   const [results, setResults] = useState([]);
@@ -66,13 +86,52 @@ const StudentDashboard = () => {
 
   // Compute stats from results
   const totalResults = results.length;
-  const passedResults = results.filter(r => r.grade && r.grade !== 'F').length;
+  const passedResults = results.filter(r => r.grade && r.grade !== 'E').length;
   const recentResults = results.slice(0, 4); // already sorted by published_at DESC from backend
 
-  // Compute average score as a "GPA-like" metric (since backend returns scores, not grade points)
-  const avgScore = totalResults > 0
-    ? (results.reduce((sum, r) => sum + (r.score || 0), 0) / totalResults).toFixed(1)
-    : '0.0';
+  const numericScores = results
+    .map((result) => Number.parseFloat(result.score))
+    .filter((score) => Number.isFinite(score));
+
+  const avgScoreValue = numericScores.length > 0
+    ? numericScores.reduce((sum, score) => sum + score, 0) / numericScores.length
+    : 0;
+
+  const currentGpa = Math.min(4, avgScoreValue / 25).toFixed(2);
+  const avgScore = avgScoreValue.toFixed(1);
+
+  const gradeBandCounts = gradeBandConfig.reduce((acc, band) => {
+    acc[band.key] = 0;
+    return acc;
+  }, {});
+
+  results.forEach((result) => {
+    const gradeBand = getGradeBand(result.grade);
+    gradeBandCounts[gradeBand] += 1;
+  });
+
+  const totalGradedResults = Object.values(gradeBandCounts).reduce((sum, count) => sum + count, 0);
+
+  let runningFraction = 0;
+  const gradeSegments = gradeBandConfig
+    .map((band) => {
+      const count = gradeBandCounts[band.key];
+      if (!count || totalGradedResults === 0) {
+        return null;
+      }
+
+      const fraction = count / totalGradedResults;
+      const segment = {
+        ...band,
+        count,
+        dashArray: `${fraction * DONUT_CIRCUMFERENCE} ${DONUT_CIRCUMFERENCE - fraction * DONUT_CIRCUMFERENCE}`,
+        dashOffset: -runningFraction * DONUT_CIRCUMFERENCE,
+      };
+
+      runningFraction += fraction;
+      return segment;
+    })
+    .filter(Boolean);
 
   if (loading) {
     return (
@@ -102,7 +161,7 @@ const StudentDashboard = () => {
     if (grade.startsWith('A')) return 'text-emerald-600';
     if (grade.startsWith('B')) return 'text-ceylon-gold-600';
     if (grade.startsWith('C')) return 'text-orange-500';
-    if (grade === 'F') return 'text-red-600';
+    if (grade === 'E') return 'text-red-600';
     return 'text-gray-700';
   };
 
@@ -134,9 +193,9 @@ const StudentDashboard = () => {
       {/* Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          title="Average Score"
-          value={avgScore}
-          subtitle="Out of 100"
+          title="Current GPA"
+          value={currentGpa}
+          subtitle="On 4.00 scale"
           icon={Award}
         />
         <StatCard
@@ -234,14 +293,21 @@ const StudentDashboard = () => {
                   {/* Background circle */}
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                     <circle cx="60" cy="60" r="50" fill="none" stroke="#E5E7EB" strokeWidth="10" />
-                    <circle
-                      cx="60" cy="60" r="50" fill="none"
-                      stroke="#5F0A0C"
-                      strokeWidth="10"
-                      strokeDasharray={`${(parseFloat(avgScore) / 100) * 314} ${314 - (parseFloat(avgScore) / 100) * 314}`}
-                      strokeLinecap="round"
-                      className="transition-all duration-1000"
-                    />
+                    {gradeSegments.map((segment) => (
+                      <circle
+                        key={segment.key}
+                        cx="60"
+                        cy="60"
+                        r={DONUT_RADIUS}
+                        fill="none"
+                        stroke={segment.color}
+                        strokeWidth="10"
+                        strokeDasharray={segment.dashArray}
+                        strokeDashoffset={segment.dashOffset}
+                        strokeLinecap="butt"
+                        className="transition-all duration-1000"
+                      />
+                    ))}
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-3xl font-bold text-gray-900">{avgScore}</span>
@@ -249,6 +315,16 @@ const StudentDashboard = () => {
                   </div>
                 </div>
               </div>
+              {gradeSegments.length > 0 && (
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 mt-1">
+                  {gradeSegments.map((segment) => (
+                    <div key={`${segment.key}-legend`} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
+                      <span className="text-xs text-gray-600">{segment.label}: {segment.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
