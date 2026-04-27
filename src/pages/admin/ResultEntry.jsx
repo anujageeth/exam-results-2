@@ -39,6 +39,12 @@ function createEmptyEntry() {
   return { studentId: '', score: '', grade: '' };
 }
 
+const requiredCsvHeaders = ['student_id', 'exam_id', 'score', 'grade'];
+
+function normalizeCsvHeader(value) {
+  return value.trim().replace(/^"|"$/g, '').toLowerCase();
+}
+
 const ResultEntry = () => {
   const [exams, setExams] = useState([]);
   const [examsLoading, setExamsLoading] = useState(true);
@@ -55,6 +61,9 @@ const ResultEntry = () => {
   const [sagaPolling, setSagaPolling] = useState(false);
   const [sagaState, setSagaState] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvError, setCsvError] = useState(null);
+  const [csvInfo, setCsvInfo] = useState(null);
 
   // Fetch students and exams from DB on mount
   useEffect(() => {
@@ -188,6 +197,80 @@ const ResultEntry = () => {
     }
   };
 
+  const handleCsvSelection = async (event) => {
+    const file = event.target.files?.[0];
+
+    setCsvFile(null);
+    setCsvInfo(null);
+    setCsvError(null);
+    setUploadResult(null);
+    setUploadError(null);
+    setSagaState(null);
+    setFormError(null);
+
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setCsvError('Please select a valid .csv file.');
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      const normalized = text.replace(/^\uFEFF/, '');
+      const lines = normalized.split(/\r?\n/).filter(line => line.trim() !== '');
+
+      if (lines.length < 2) {
+        setCsvError('CSV file must contain a header row and at least one data row.');
+        return;
+      }
+
+      const headers = lines[0].split(',').map(normalizeCsvHeader);
+      const missingHeaders = requiredCsvHeaders.filter(header => !headers.includes(header));
+
+      if (missingHeaders.length > 0) {
+        setCsvError(`Missing required columns: ${missingHeaders.join(', ')}`);
+        return;
+      }
+
+      setCsvFile(file);
+      setCsvInfo({
+        name: file.name,
+        sizeKb: (file.size / 1024).toFixed(2),
+        rows: lines.length - 1,
+      });
+    } catch (err) {
+      setCsvError(err.message || 'Unable to read the selected CSV file.');
+    }
+  };
+
+  const handleCsvUpload = async () => {
+    if (!csvFile) {
+      setCsvError('Please choose a CSV file before publishing.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadError(null);
+      setUploadResult(null);
+      setSagaState(null);
+      setFormError(null);
+      setCsvError(null);
+
+      const result = await uploadResults(csvFile);
+      setUploadResult(result);
+
+      if (result.sagaId) {
+        pollSagaStatus(result.sagaId);
+      }
+    } catch (err) {
+      setUploadError(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const pollSagaStatus = async (sagaId) => {
     setSagaPolling(true);
     try {
@@ -210,6 +293,9 @@ const ResultEntry = () => {
     setSelectedExam('');
     setSelectedDate(new Date().toISOString().slice(0, 10));
     setEntries([createEmptyEntry()]);
+    setCsvFile(null);
+    setCsvError(null);
+    setCsvInfo(null);
     setUploadResult(null);
     setUploadError(null);
     setSagaState(null);
@@ -248,7 +334,61 @@ const ResultEntry = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5 text-ceylon-maroon" />
-            Student Result Rows
+            Upload CSV File
+          </CardTitle>
+          <CardDescription>
+            Choose a .csv file and publish all rows directly to the backend bulk upload endpoint.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+            <div className="md:col-span-2">
+              <Input
+                type="file"
+                label="CSV File"
+                accept=".csv,text/csv"
+                onChange={handleCsvSelection}
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handleCsvUpload}
+              disabled={uploading || !csvFile}
+              className="gap-1.5"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Publishing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" /> Upload CSV & Publish
+                </>
+              )}
+            </Button>
+          </div>
+
+          {csvInfo && (
+            <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700">
+              <p className="font-medium text-gray-900">{csvInfo.name}</p>
+              <p>Estimated rows: {csvInfo.rows}</p>
+              <p>File size: {csvInfo.sizeKb} KB</p>
+            </div>
+          )}
+
+          {csvError && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+              {csvError}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-ceylon-maroon" />
+            Manual Student Result Rows
           </CardTitle>
           <CardDescription>
             Each row uses student from database, score input, and frontend auto-grade calculation.
